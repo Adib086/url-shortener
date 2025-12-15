@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: url-shortener-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: url-shortener-api
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_ADDRESS=db:6379
+      - DB_PASS=
+      - DOMAIN=localhost:3000
+      - API_QUOTA=10
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+networks:
+  url-shortener-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+
